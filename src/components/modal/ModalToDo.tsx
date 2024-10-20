@@ -62,7 +62,7 @@ const ModalToDo = ({
   taskListId,
   onCreate,
   refetch,
-  isEditMode = false,
+  isEditMode,
   existingTask,
 }: ModalProps) => {
   // 날짜 및 캘린더 상태 관리
@@ -214,48 +214,61 @@ const ModalToDo = ({
           ),
         );
       }
+    } else {
+      console.error('existingTask is undefined');
     }
   }, [isEditMode, existingTask]);
-
-  // 할 일 수정 mutation
-  const { mutate: updateTask } = useMutation({
-    mutationKey: [
-      name,
-      description,
-      startDate,
-      groupId,
-      taskListId,
-      existingTask?.id,
-    ],
+  console.log('수정할 task:', existingTask);
+  const {
+    mutate: updateTask,
+    isError,
+    error,
+  } = useMutation({
     mutationFn: async () => {
       const frequencyType = getFrequency();
 
+      // 필수 값 확인
+      if (!taskListId || !existingTask?.id) {
+        throw new Error('Task or List ID is required');
+      }
+
+      // 주 반복일 경우 weekDaysNumbers 값 확인
       const requestData = {
         name,
         description,
-        startDate: startDate ? startDate.toISOString() : undefined,
-        frequencyType,
-        ...(frequencyType === 'MONTHLY' && { monthDay: startDate?.getDate() }),
         ...(frequencyType === 'WEEKLY' && { weekDays: weekDaysNumbers }),
+        ...(frequencyType === 'MONTHLY' && { monthDay: startDate?.getDate() }),
       };
 
+      console.log('PATCH 요청 데이터:', requestData); // 요청 데이터 확인
+
+      // PATCH 요청
       const response = await authAxiosInstance.patch(
         `/groups/${groupId}/task-lists/${taskListId}/tasks/${existingTask?.id}`,
         requestData,
       );
+
+      console.log('PATCH 응답 데이터:', response.data); // 응답 데이터 확인
+
       return response.data;
     },
-    onSuccess: (data: Task) => {
-      onCreate(data); // 기존 데이터 수정 후 처리
-      onClose();
-      refetch();
+    onSuccess: (data: ExtendedTask) => {
+      console.log('성공!!', data); // 성공 로그
+      onCreate(data); // 부모 컴포넌트에 변경사항 전달
+      onClose(); // 모달 닫기
+      refetch(); // 최신 데이터 다시 불러오기
+    },
+    onError: (err: any) => {
+      console.error('업데이트 중 오류 발생:', err.message); // 에러 메시지 출력
     },
   });
+
+  // Task 생성 또는 수정 처리
   const handleSubmit = () => {
-    if (isEditMode && existingTask) {
-      updateTask(); // 수정 모드일 경우
+    if (isEditMode) {
+      updateTask();
     } else {
-      createTask(); // 생성 모드일 경우
+      createTask();
     }
   };
 

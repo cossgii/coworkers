@@ -10,11 +10,7 @@ import { format, addDays, subDays } from 'date-fns';
 import Calendar from '@/components/calendar/Calendar';
 import ModalToDo from '@/components/modal/ModalToDo';
 import ModalNewList from '@/components/modal/ModalNewList';
-import {
-  useQuery,
-  UseMutationOptions,
-  useMutation,
-} from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useModalNewListStore } from '@/store/useModalNewListStore';
 import { useModalToDoStore } from '@/store/useModalToDoStore';
 import { useParams } from 'next/navigation';
@@ -25,6 +21,11 @@ import { Task, TaskList } from '@/types/Group';
 import { authAxiosInstance } from '@/app/api/auth/axiosInstance';
 import { getTaskList } from '@/api/taskListApis';
 import { createTaskList, updateTask } from '@/api/taskListApis';
+import { number } from 'yup';
+
+interface ExtendedTask extends Task {
+  weekDays?: number[]; // Optional로 추가
+}
 
 export default function List() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -79,6 +80,9 @@ export default function List() {
   const [selectedOption, setSelectedOption] = useState<string>('');
   const handleSelectOption = (option: string) => {
     setSelectedOption(option);
+    if (option === '수정하기') {
+      setIsEditMode(true);
+    }
   };
 
   // 체크박스 상태 관리
@@ -179,31 +183,66 @@ export default function List() {
   const handleCreateTask = (newTask: Task) => {
     setTasks((prevTasks) => [...prevTasks, newTask]);
   };
-  //   //task 수정 쿼리
-  //   const mutation: UseMutationOptions<any, Error, { taskId: string; updatedData: { task: Task } }> = useMutation(
-  //   // mutationFn
-  //   async ({ taskId, updatedData }) =>
-  //     updateTask(groupId, selectedTaskList.id, taskId, updatedData),
-  //   {
-  //     // mutationKey를 설정하여 유일한 식별자를 만듭니다.
-  //     mutationKey: ['updateTask', groupId, selectedTaskList.id],
-  //     onSuccess: () => {
-  //       refetch(); // 작업이 성공적으로 업데이트된 후, 작업 목록을 다시 가져옴
-  //     },
-  //     onError: (error: Error) => {
-  //       console.error('Error updating task:', error);
-  //     },
-  //   }
-  // );
-  const [editingTask, setEditingTask] = useState(null);
+  const [editingTask, setEditingTask] = useState<ExtendedTask | undefined>(
+    undefined,
+  );
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const handleEdit = (taskId: number) => {
-    const taskToEdit = tasksResponse.find((task: Task) => task.id === taskId);
+    const taskToEdit = tasksResponse.find(
+      (task: ExtendedTask) => task.id === taskId,
+    );
 
     if (taskToEdit) {
       setEditingTask(taskToEdit); // 선택한 작업 정보 저장
+      useModalToDoStore.getState().openModal();
+      console.log('수정할 task:', taskToEdit);
+      setIsEditMode(true);
+    } else {
+      console.error(`Task with ID ${taskId} not found`);
     }
   };
 
+  const deleteTaskFn = async (taskId: number) => {
+    await authAxiosInstance.delete(
+      `/groups/${groupId}/task-lists/${selectedTaskList?.id}/tasks/${taskId}`,
+    );
+  };
+
+  // 할일 삭제 mutation
+  const { mutate: deleteTask } = useMutation({
+    mutationKey: ['deleteTask', { taskId: number }], // taskId를 사용하여 고유한 mutationKey 설정
+    mutationFn: async (taskId: number) => {
+      // taskId의 유효성 확인
+      if (!taskId) {
+        throw new Error('Task ID is required');
+      }
+
+      console.log('삭제할 Task ID:', taskId);
+
+      const response = await authAxiosInstance.delete(
+        `/groups/${groupId}/task-lists/${selectedTaskList?.id}/tasks/${taskId}`,
+      );
+
+      console.log('서버 응답:', JSON.stringify(response.data, null, 2));
+
+      return response.data; // 필요시 반환값 설정
+    },
+    onSuccess: (data) => {
+      console.log('할 일 삭제 성공:', data);
+      // 삭제 후 상태 업데이트 (예: UI에서 해당 task 제거)
+
+      refetch(); // 필요시 데이터 재조회
+    },
+    onError: (error: Error) => {
+      console.error('할 일 삭제 오류:', error);
+    },
+  });
+
+  const handleDelete = (taskId: number) => {
+    deleteTask(taskId);
+  };
+  console.log('isEditMode', isEditMode);
+  console.log('existingTask:', editingTask);
   return (
     <div className="lg:w-300.25-custom">
       <span className="font-pretendard mb-27px lg: md-6 h-5.25-custom leading-5.25-custom mt-6 block w-9 whitespace-nowrap text-center text-lg font-bold md:my-6 md:h-6 md:w-10 md:text-xl md:leading-6 lg:mb-6 lg:mt-10 lg:h-6 lg:w-12 lg:text-left">
@@ -287,13 +326,17 @@ export default function List() {
             }
             onSelectOption={handleSelectOption}
             onEdit={handleEdit}
+            onDelete={handleDelete}
           />
         ))
       )}
 
       <button
         className="fixed bottom-6 right-6 rounded-full bg-brand-primary px-[21px] py-3.5"
-        onClick={() => useModalToDoStore.getState().openModal()}
+        onClick={() => {
+          useModalToDoStore.getState().openModal();
+          setIsEditMode(false);
+        }}
       >
         + 할 일 추가
       </button>
@@ -305,6 +348,8 @@ export default function List() {
           groupId={groupId}
           taskListId={selectedTaskList?.id}
           refetch={refetch}
+          existingTask={editingTask}
+          isEditMode={isEditMode}
         />
       )}
     </div>

@@ -13,6 +13,7 @@ import { format, parseISO } from 'date-fns';
 
 interface ListCardProps {
   task: Task;
+  onDelete: (taskId: number) => void;
   onEdit: (taskId: number) => void;
   onSelectOption: (option: string) => void; // 타입 수정
   onCheckboxChange: (checked: boolean) => void;
@@ -22,6 +23,7 @@ interface ListCardProps {
 export default function ListCard({
   task,
   onEdit,
+  onDelete,
   onSelectOption,
   onCheckboxChange,
   checked,
@@ -65,6 +67,7 @@ export default function ListCard({
             onSelectOption={onSelectOption}
             onEdit={onEdit}
             taskId={task.id}
+            onDelete={onDelete}
           />
         </div>
       </div>
