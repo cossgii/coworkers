@@ -37,14 +37,8 @@ export default function ListCard({
       <div className="mb-2.5 flex justify-between">
         <div className="flex">
           <Checkbox onChange={onCheckboxChange} checked={checked} />
-          <div
-            className={
-              checked
-                ? 'text-md-regular my-auto ml-2 mr-3 text-text-primary line-through'
-                : 'text-md-regular my-auto ml-2 mr-3 text-text-primary'
-            }
-          >
-            {task.description}
+          <div className="text-md-regular ${checked? 'line-through': ''} my-auto ml-2 mr-3 text-text-primary">
+            {task.name}
           </div>
           {/* 데스크탑, 태블릿일 때는 comment가 원래 위치 */}
           <div className="hidden md:flex md:items-center lg:flex lg:items-center">

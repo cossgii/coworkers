@@ -8,8 +8,6 @@ import ListCard from '@/components/pages/list/ListCard';
 import FilterSelection from '@/components/pages/list/FilterSelection';
 import { format, addDays, subDays } from 'date-fns';
 import Calendar from '@/components/calendar/Calendar';
-import { useModalStore } from '@/store/useModalStore';
-import ModalPortal from '@/components/ModalPortal/ModalPortal';
 import ModalToDo from '@/components/modal/ModalToDo';
 import ModalNewList from '@/components/modal/ModalNewList';
 import { useQuery } from '@tanstack/react-query';
@@ -29,6 +27,11 @@ export default function List() {
   const { user } = useSessionStore();
   const { userData } = useUser(user?.id);
   const { group, isLoading, error } = useGroup(groupId);
+
+  // ADMIN 권한이 있는지 확인
+  const isAdmin = group?.members.some(
+    (member) => member.role === 'ADMIN' && member.userId === user?.id,
+  );
 
   // 날짜 및 캘린더 상태 관리
   const [startDate, setStartDate] = useState<Date | null>(new Date());
@@ -113,7 +116,6 @@ export default function List() {
       (taskList) => taskList.name === filter,
     );
     setSelectedTaskList(selectedList);
-    console.log('선택된 task list:', selectedList);
   };
 
   // Task List 생성 후 서버에 전송하고 다시 불러오기
@@ -153,23 +155,7 @@ export default function List() {
     },
     enabled: !!selectedTaskList && !!groupId,
   });
-  // // task 불러오기 쿼리
-  // const { data: tasksResponse, refetch } = useQuery({
-  //   queryKey: [groupId, selectedTaskList, selectDate],
-  //   queryFn: async () => {
-  //     const response = await authAxiosInstance.get(
-  //       `/groups/${groupId}/task-lists/${selectedTaskList?.id}/tasks`,
-  //       {
-  //         params: { date: selectDate?.toISOString() },
-  //       },
-  //     );
-  //     console.log('서버로부터 받아온 tasks 데이터:', response.data);
-  //     console.log('selectDate 파라미터:', selectDate?.toISOString());
-  //     return response.data;
-  //   },
-  //   enabled: !!selectedTaskList && !!groupId,
-  // });
-  // Task List 선택 후 task 데이터 받아오기
+
   useEffect(() => {
     if (tasksResponse) {
       setSelectedTaskList((prevList) => {
@@ -189,11 +175,6 @@ export default function List() {
   const handleCreateTask = (newTask: Task) => {
     setTasks((prevTasks) => [...prevTasks, newTask]);
   };
-
-  // 콘솔 확인
-  console.log('tasksResponse', groupId, selectedTaskList, tasksResponse);
-  console.log('isToDoOpen:', isToDoOpen);
-  console.log(`taskNames: ${taskNames}`);
 
   return (
     <div className="lg:w-300.25-custom">
