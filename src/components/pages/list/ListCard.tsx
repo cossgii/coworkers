@@ -13,13 +13,15 @@ import { format, parseISO } from 'date-fns';
 
 interface ListCardProps {
   task: Task;
-  onSelectOption: (option: string) => void;
+  onEdit: (taskId: number) => void;
+  onSelectOption: (option: string) => void; // 타입 수정
   onCheckboxChange: (checked: boolean) => void;
   checked: boolean;
 }
 
 export default function ListCard({
   task,
+  onEdit,
   onSelectOption,
   onCheckboxChange,
   checked,
@@ -28,6 +30,7 @@ export default function ListCard({
     const date = parseISO(dateString); // ISO 8601 문자열을 Date 객체로 변환
     return format(date, 'yyyy년 MM월 dd일');
   }
+
   if (!task) {
     return null;
   }
@@ -37,7 +40,9 @@ export default function ListCard({
       <div className="mb-2.5 flex justify-between">
         <div className="flex">
           <Checkbox onChange={onCheckboxChange} checked={checked} />
-          <div className="text-md-regular ${checked? 'line-through': ''} my-auto ml-2 mr-3 text-text-primary">
+          <div
+            className={`text-md-regular ${checked ? 'line-through' : ''} my-auto ml-2 mr-3 text-text-primary`}
+          >
             {task.name}
           </div>
           {/* 데스크탑, 태블릿일 때는 comment가 원래 위치 */}
@@ -56,7 +61,11 @@ export default function ListCard({
               {task.commentCount}
             </div>
           </div>
-          <ListCardDropdown onSelectOption={onSelectOption} />
+          <ListCardDropdown
+            onSelectOption={onSelectOption}
+            onEdit={onEdit}
+            taskId={task.id}
+          />
         </div>
       </div>
       <div className="flex gap-2.5">

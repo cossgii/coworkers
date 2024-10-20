@@ -1,7 +1,7 @@
 // GET
 
 import { authAxiosInstance } from '@/app/api/auth/axiosInstance';
-import { IGroup } from '@/types/Group';
+import { IGroup, Task } from '@/types/Group';
 
 // /{teamId}/groups/{groupId}/task-lists/{id}
 export const getTaskList = async (groupId: string, id: string) => {
@@ -38,4 +38,16 @@ export const createTaskList = async (
 };
 
 // PATCH
-// /{teamId}/groups/{groupId}/task-lists/{id}/order
+// /{teamId}/groups/{groupId}/task-lists/{id}/
+export const updateTask = async (
+  groupId: string | string[],
+  taskListId: string | string[],
+  taskId: string,
+  updatedData: { task: Task },
+) => {
+  const response = await authAxiosInstance.patch(
+    `/groups/${groupId}/task-lists/${taskListId}/tasks/${taskId}`,
+    updatedData,
+  );
+  return response.data;
+};

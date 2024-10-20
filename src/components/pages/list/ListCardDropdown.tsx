@@ -45,7 +45,7 @@ export default function ListCardDropdown({
     } else if (option === '수정하기') {
       onEdit(taskId); // 수정할 작업 ID를 전달
       onSelectOption(option); // 수정할 작업의 옵션을 전달
-      useModalToDoStore.getState().openModal(); // 모달 열기
+      openToDoModal(); // 모달 열기
     }
   };
 

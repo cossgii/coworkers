@@ -10,7 +10,11 @@ import { format, addDays, subDays } from 'date-fns';
 import Calendar from '@/components/calendar/Calendar';
 import ModalToDo from '@/components/modal/ModalToDo';
 import ModalNewList from '@/components/modal/ModalNewList';
-import { useQuery } from '@tanstack/react-query';
+import {
+  useQuery,
+  UseMutationOptions,
+  useMutation,
+} from '@tanstack/react-query';
 import { useModalNewListStore } from '@/store/useModalNewListStore';
 import { useModalToDoStore } from '@/store/useModalToDoStore';
 import { useParams } from 'next/navigation';
@@ -20,7 +24,7 @@ import useGroup from '@/hooks/useGroup';
 import { Task, TaskList } from '@/types/Group';
 import { authAxiosInstance } from '@/app/api/auth/axiosInstance';
 import { getTaskList } from '@/api/taskListApis';
-import { createTaskList } from '@/api/taskListApis';
+import { createTaskList, updateTask } from '@/api/taskListApis';
 
 export default function List() {
   const { groupId } = useParams<{ groupId: string }>();
@@ -175,6 +179,30 @@ export default function List() {
   const handleCreateTask = (newTask: Task) => {
     setTasks((prevTasks) => [...prevTasks, newTask]);
   };
+  //   //task 수정 쿼리
+  //   const mutation: UseMutationOptions<any, Error, { taskId: string; updatedData: { task: Task } }> = useMutation(
+  //   // mutationFn
+  //   async ({ taskId, updatedData }) =>
+  //     updateTask(groupId, selectedTaskList.id, taskId, updatedData),
+  //   {
+  //     // mutationKey를 설정하여 유일한 식별자를 만듭니다.
+  //     mutationKey: ['updateTask', groupId, selectedTaskList.id],
+  //     onSuccess: () => {
+  //       refetch(); // 작업이 성공적으로 업데이트된 후, 작업 목록을 다시 가져옴
+  //     },
+  //     onError: (error: Error) => {
+  //       console.error('Error updating task:', error);
+  //     },
+  //   }
+  // );
+  const [editingTask, setEditingTask] = useState(null);
+  const handleEdit = (taskId: number) => {
+    const taskToEdit = tasksResponse.find((task: Task) => task.id === taskId);
+
+    if (taskToEdit) {
+      setEditingTask(taskToEdit); // 선택한 작업 정보 저장
+    }
+  };
 
   return (
     <div className="lg:w-300.25-custom">
@@ -258,6 +286,7 @@ export default function List() {
               handleCheckboxChange(tasksResponse.id, checked)
             }
             onSelectOption={handleSelectOption}
+            onEdit={handleEdit}
           />
         ))
       )}

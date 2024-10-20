@@ -19,6 +19,11 @@ interface ModalProps {
   children?: React.ReactNode;
   onCreate: (data: Task) => void;
   refetch: () => void;
+  isEditMode?: boolean;
+  existingTask?: ExtendedTask;
+}
+interface ExtendedTask extends Task {
+  weekDays?: number[]; // Optional로 추가
 }
 
 const WeekDays: Array<'일' | '월' | '화' | '수' | '목' | '금' | '토'> = [
@@ -49,6 +54,7 @@ const convertToNumber = (
   return days.map((day) => dayMap[day]);
 };
 const weekDaysNumbers: number[] = convertToNumber(WeekDays);
+
 const ModalToDo = ({
   isOpen,
   onClose,
@@ -56,6 +62,8 @@ const ModalToDo = ({
   taskListId,
   onCreate,
   refetch,
+  isEditMode = false,
+  existingTask,
 }: ModalProps) => {
   // 날짜 및 캘린더 상태 관리
   const [startDate, setStartDate] = useState<Date | null>(new Date());
@@ -130,7 +138,7 @@ const ModalToDo = ({
         : [...prevSelectedDays, day],
     );
   };
-
+  // 할일 생성 mutation
   const { mutate: createTask } = useMutation({
     mutationKey: [
       name,
@@ -141,9 +149,9 @@ const ModalToDo = ({
       selectedOption,
     ],
     mutationFn: async () => {
-      const frequencyType = getFrequency(); // 올바른 frequencyType 반환
+      const frequencyType = getFrequency();
 
-      // taskListId가 유효한지 확인
+      // taskListId의 유효성 확인
       if (!taskListId) {
         throw new Error('Task List ID is required');
       }
@@ -154,11 +162,11 @@ const ModalToDo = ({
         startDate: startDate ? startDate.toISOString() : undefined,
         frequencyType, // 주기 유형
         ...(frequencyType === 'MONTHLY' && {
-          monthDay: startDate ? startDate.getDate() : undefined, // 월의 날 추가
+          monthDay: startDate ? startDate.getDate() : undefined,
         }),
         ...(frequencyType === 'WEEKLY' &&
           weekDaysNumbers.length > 0 && {
-            weekDays: weekDaysNumbers, // 주간 요일 추가
+            weekDays: weekDaysNumbers,
           }),
       };
 
@@ -191,6 +199,66 @@ const ModalToDo = ({
   });
   console.log('모달에서 startDate 파라미터 :', startDate?.toISOString());
   console.log(selectedDays);
+
+  // 기존 task 데이터를 수정 모드일 때 초기화
+  useEffect(() => {
+    if (isEditMode && existingTask) {
+      setName(existingTask.name);
+      setDescription(existingTask.description);
+      setStartDate(new Date(existingTask.date));
+      setSelectedOption(existingTask.frequency || '반복 안함');
+      if (existingTask.frequency === 'WEEKLY' && existingTask.weekDays) {
+        setSelectedDays(
+          existingTask.weekDays.map(
+            (weekDaysNumbers: number) => WeekDays[weekDaysNumbers],
+          ),
+        );
+      }
+    }
+  }, [isEditMode, existingTask]);
+
+  // 할 일 수정 mutation
+  const { mutate: updateTask } = useMutation({
+    mutationKey: [
+      name,
+      description,
+      startDate,
+      groupId,
+      taskListId,
+      existingTask?.id,
+    ],
+    mutationFn: async () => {
+      const frequencyType = getFrequency();
+
+      const requestData = {
+        name,
+        description,
+        startDate: startDate ? startDate.toISOString() : undefined,
+        frequencyType,
+        ...(frequencyType === 'MONTHLY' && { monthDay: startDate?.getDate() }),
+        ...(frequencyType === 'WEEKLY' && { weekDays: weekDaysNumbers }),
+      };
+
+      const response = await authAxiosInstance.patch(
+        `/groups/${groupId}/task-lists/${taskListId}/tasks/${existingTask?.id}`,
+        requestData,
+      );
+      return response.data;
+    },
+    onSuccess: (data: Task) => {
+      onCreate(data); // 기존 데이터 수정 후 처리
+      onClose();
+      refetch();
+    },
+  });
+  const handleSubmit = () => {
+    if (isEditMode && existingTask) {
+      updateTask(); // 수정 모드일 경우
+    } else {
+      createTask(); // 생성 모드일 경우
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -324,13 +392,9 @@ const ModalToDo = ({
             {/* 만들기 버튼 */}
             <button
               className="px-auto py-auto mt-2 h-[47px] w-full rounded-xl bg-brand-primary text-text-inverse"
-              onClick={() => {
-                // TODO: 데이터 생성 API 호출
-                createTask();
-                onClose();
-              }}
+              onClick={handleSubmit}
             >
-              만들기
+              {isEditMode ? '수정하기' : '만들기'}
             </button>
           </div>
         </div>
