@@ -5,13 +5,13 @@ import UncheckedImage from '@/assets/icons/uncheckedbox.svg';
 import CheckedImage from '@/assets/icons/checkedbox.svg';
 
 interface CheckboxProps {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
+  checked?: boolean;
+  onChange?: (checked: boolean) => void;
 }
 
 const Checkbox = ({ checked, onChange }: CheckboxProps) => {
   const handleChange = () => {
-    onChange(!checked);
+    onChange?.(!checked);
   };
   return (
     <div
